@@ -1,727 +1,321 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Polski Rynek Pracy — Wizualizator GUS BDL</title>
-<meta name="description" content="Interaktywna mapa zatrudnienia w Polsce wg sekcji PKD — zainspirowana karpathy.ai/jobs. Dane na żywo z GUS BDL API.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0a0a0a;--surface:#141414;--surface2:#1c1c1c;
-  --border:#252525;--border2:#333;--text:#eeeae2;
-  --muted:#666;--muted2:#444;--accent:#f5a623;
-  --green:#4ade80;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;
-  --fd:'Syne',sans-serif;--fb:'Inter',-apple-system,sans-serif;--fm:'JetBrains Mono',monospace;
-}
-html{scroll-behavior:smooth}
-body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:13px;line-height:1.55;min-height:100vh;overflow-x:hidden}
-#app{max-width:1600px;margin:0 auto;padding:18px 22px 52px}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polski Rynek Pracy — Wizualizator GUS BDL</title>
+  <meta name="description"
+    content="Interaktywna mapa zatrudnienia w Polsce wg sekcji PKD — zainspirowana karpathy.ai/jobs. Dane na żywo z GUS BDL API.">
 
-/* HEADER */
-header{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:0}
-.hdr{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start}
-@media(max-width:700px){.hdr{grid-template-columns:1fr}}
-h1{font-family:var(--fd);font-size:clamp(1.15rem,2.4vw,1.65rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;color:#fff}
-h1 em{font-style:normal;color:var(--accent)}
-.tagline{margin-top:6px;color:var(--muted);font-size:11.5px;line-height:1.65;max-width:700px}
-.tagline a{color:var(--accent);text-decoration:none}
-.tagline a:hover{text-decoration:underline}
-.hdr-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;align-items:center}
-.tag{font-family:var(--fm);font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border2);color:var(--muted);background:var(--surface2);display:inline-flex;align-items:center;gap:5px;text-decoration:none;transition:all .12s;white-space:nowrap;cursor:pointer}
-.tag:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,166,35,.07)}
-.tag-live{border-color:#166534;background:rgba(74,222,128,.07);color:var(--green)}
-.tag-static{border-color:#854d0e;background:rgba(245,166,35,.07);color:var(--accent)}
-.tag-karpathy{border-color:#3b82f6;background:rgba(96,165,250,.06);color:var(--blue)}
-.dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 2s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-.stats-block{display:flex;gap:20px;flex-wrap:wrap;justify-content:flex-end;padding-top:2px}
-@media(max-width:700px){.stats-block{justify-content:flex-start;margin-top:10px}}
-.stat{text-align:right}
-@media(max-width:700px){.stat{text-align:left}}
-.stat-num{font-family:var(--fm);font-size:1.35rem;font-weight:500;color:#fff;letter-spacing:-.02em;line-height:1}
-.stat-lbl{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
 
-/* API BAR */
-#api-bar{display:flex;align-items:center;gap:9px;padding:7px 14px;font-family:var(--fm);font-size:11px;background:var(--surface);border:1px solid var(--border);border-top:none;color:var(--muted);transition:all .4s;overflow:hidden;max-height:40px}
-#api-bar.ok{border-color:#166534;color:var(--green);background:rgba(74,222,128,.04)}
-#api-bar.warn{border-color:#854d0e;color:var(--accent);background:rgba(245,166,35,.04)}
-#api-bar.collapsed{max-height:0;padding-top:0;padding-bottom:0;border-width:0;opacity:0}
-.spin{width:11px;height:11px;border:1.5px solid var(--border2);border-top-color:var(--muted);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
-@keyframes spin{to{transform:rotate(360deg)}}
-#api-chain{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-#api-ytag{padding:1px 6px;border-radius:2px;border:1px solid currentColor;font-size:9px;opacity:.75;flex-shrink:0}
+  <!-- Styles -->
+  <link rel="stylesheet" href="./style.css">
 
-/* CONTROLS */
-.controls-row{display:flex;align-items:center;gap:4px;padding:10px 0 6px;flex-wrap:wrap}
-.ctrl-lbl{font-size:10px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.07em;margin-right:6px;font-family:var(--fm)}
-.btn{padding:5px 13px;border:1px solid var(--border2);border-radius:4px;background:transparent;cursor:pointer;font-size:11.5px;font-family:var(--fb);font-weight:500;color:var(--muted);transition:all .1s}
-.btn:hover{border-color:var(--text);color:var(--text)}
-.btn.active{background:#fff;color:#000;border-color:#fff;font-weight:600}
-.btn-ai{border-color:rgba(167,139,250,.4);color:var(--purple);background:rgba(167,139,250,.05)}
-.btn-ai:hover{border-color:var(--purple);background:rgba(167,139,250,.1)}
-.btn-ai.active{background:var(--purple);color:#000;border-color:var(--purple)}
+  <!-- D3.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 
-/* LEGEND */
-.legend-row{display:flex;align-items:center;gap:10px;min-height:20px;flex-wrap:wrap;margin-bottom:6px}
-.layer-desc{font-size:11px;color:var(--muted2);font-style:italic;margin-left:auto}
-@media(max-width:700px){.layer-desc{display:none}}
-.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
-.lsw{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-
-/* CHART */
-#chart{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;position:relative;min-height:400px}
-#chart svg{display:block;width:100%}
-.tile{cursor:pointer}
-.tile rect{stroke:var(--bg);stroke-width:1.5;transition:filter .1s}
-.tile:hover rect{filter:brightness(1.22) saturate(1.1)}
-
-/* TOOLTIP */
-#tt{position:fixed;background:rgba(14,14,14,.98);border:1px solid var(--border2);color:var(--text);padding:14px 16px;border-radius:10px;font-size:12px;pointer-events:none;max-width:300px;z-index:9999;display:none;box-shadow:0 16px 48px rgba(0,0,0,.75);backdrop-filter:blur(12px)}
-.tt-code{font-family:var(--fm);font-size:9px;color:var(--accent);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px}
-.tt-name{font-family:var(--fd);font-weight:700;font-size:13.5px;color:#fff;line-height:1.2;margin-bottom:10px;letter-spacing:-.02em}
-.tt-grid{display:grid;grid-template-columns:1fr auto;gap:2px 14px}
-.tt-k{color:var(--muted);font-size:11px;line-height:1.8}
-.tt-v{font-family:var(--fm);font-size:10.5px;color:#fff;font-weight:500;text-align:right;line-height:1.8}
-.tt-aibar{margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
-.tt-aibar-lbl{font-size:9.5px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
-.tt-track{background:var(--surface2);border-radius:3px;height:6px;overflow:hidden}
-.tt-fill{height:100%;border-radius:3px}
-.tt-ainote{font-size:10px;color:var(--muted);line-height:1.55;margin-top:7px;font-style:italic}
-.tt-src{margin-top:7px;font-family:var(--fm);font-size:9px;color:var(--muted2)}
-
-/* AI IMPACT */
-#ai-impact{margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.aim-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
-.aim-title{font-family:var(--fd);font-size:.95rem;font-weight:700;color:#fff;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
-.aim-badge{font-family:var(--fm);font-size:9px;padding:2px 7px;border-radius:2px;border:1px solid rgba(167,139,250,.4);color:var(--purple);background:rgba(167,139,250,.07)}
-.aim-sub{font-size:11px;color:var(--muted);font-style:italic}
-.aim-cards{padding:14px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-@media(max-width:900px){.aim-cards{grid-template-columns:1fr 1fr}}
-@media(max-width:500px){.aim-cards{grid-template-columns:1fr}}
-.ai-card{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:12px 14px}
-.ai-card-val{font-family:var(--fm);font-size:1.45rem;font-weight:500;line-height:1;margin-bottom:5px}
-.ai-card-lbl{font-size:10.5px;color:var(--muted);line-height:1.45}
-.ai-card-lbl strong{color:var(--text);font-weight:600}
-.ai-card-sub{font-size:9.5px;color:var(--muted2);margin-top:5px;font-family:var(--fm)}
-.dist-wrap{padding:0 16px 14px;border-top:1px solid var(--border)}
-.dist-title{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:10px 0 8px;font-family:var(--fm)}
-.dist-bar{display:flex;height:26px;border-radius:5px;overflow:hidden;gap:2px}
-.dist-seg{display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;font-weight:600;color:rgba(0,0,0,.8);min-width:0;overflow:hidden;cursor:default}
-.dist-seg span{white-space:nowrap;overflow:hidden;padding:0 4px}
-.dist-key{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap}
-.dist-key-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
-.dk-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.insights{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border)}
-@media(max-width:700px){.insights{grid-template-columns:1fr}}
-.insight{padding:12px 16px;font-size:11.5px;color:var(--muted);line-height:1.65}
-.insight:first-child{border-right:1px solid var(--border)}
-@media(max-width:700px){.insight:first-child{border-right:none;border-bottom:1px solid var(--border)}}
-.insight strong{color:var(--text);font-weight:600}
-.hi{color:var(--accent)}
-
-/* FOOTER */
-.footer{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}
-@media(max-width:600px){.footer{grid-template-columns:1fr}}
-.fb{font-size:11px;color:var(--muted2);line-height:1.65}
-.fb strong{color:var(--muted);font-weight:600;display:block;margin-bottom:2px}
-.fb code{font-family:var(--fm);font-size:10px}
-
-/* ABOUT OVERLAY */
-#overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:18px}
-#overlay.show{display:flex}
-.about-box{background:#0f0f0f;border:1px solid var(--border2);border-radius:14px;max-width:740px;width:100%;max-height:92vh;overflow-y:auto;padding:30px 34px;position:relative}
-.about-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .12s}
-.about-close:hover{background:var(--border2);color:var(--text)}
-.about-title{font-family:var(--fd);font-size:1.45rem;font-weight:800;color:#fff;letter-spacing:-.03em;margin-bottom:5px}
-.about-sub{color:var(--muted);font-size:12px;margin-bottom:22px;line-height:1.65}
-.about-sub a{color:var(--blue);text-decoration:none}
-.about-sub a:hover{text-decoration:underline}
-.about-sec{margin-bottom:20px}
-.about-sec-title{font-family:var(--fm);font-size:9.5px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px}
-.step-grid{display:flex;flex-direction:column;gap:7px}
-.step{display:flex;gap:11px;align-items:flex-start;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px}
-.step-n{width:22px;height:22px;border-radius:50%;background:var(--accent);font-family:var(--fm);font-size:10px;font-weight:600;color:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.step-title{font-weight:600;font-size:12px;color:#fff;margin-bottom:2px}
-.step-code{font-family:var(--fm);font-size:9.5px;color:var(--muted);background:var(--surface2);padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block;word-break:break-all}
-.step-note{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.5}
-.step-note a{color:var(--blue);text-decoration:none}
-.src-grid{display:grid;gap:5px}
-.src-row{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:start;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:11px}
-.src-row .sl{color:#fff;font-weight:600}
-.src-row .sd{color:var(--muted);line-height:1.5}
-.src-row .sd a{color:var(--blue);text-decoration:none}
-.src-row .sd a:hover{text-decoration:underline}
-.src-row .sb{font-family:var(--fm);font-size:8.5px;padding:2px 5px;border:1px solid currentColor;border-radius:2px;white-space:nowrap;align-self:flex-start}
-.kbox{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.18);border-radius:8px;padding:13px 15px;display:flex;gap:13px;align-items:flex-start}
-.kav{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
-.kn{font-weight:700;color:#fff;font-size:13px;margin-bottom:3px}
-.kt{color:var(--muted);font-size:11px;line-height:1.6}
-.kl{color:var(--blue);text-decoration:none;font-size:10.5px;margin-top:4px;display:inline-flex;gap:3px}
-.kl:hover{text-decoration:underline}
-.disclaimer{font-size:10.5px;color:var(--muted2);line-height:1.65;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:9px 12px;margin-top:18px}
-</style>
+  <!-- Embedded fallback data (instant, no loading required) -->
+  <script src="./data/sectors-2025-embedded.js"></script>
 </head>
+
 <body>
-<div id="app">
-
-<header>
-  <div class="hdr">
-    <div>
-      <h1>Polski Rynek Pracy <em>/</em> Wizualizator PKD 2007</h1>
-      <p class="tagline">
-        Interaktywna mapa cieplna 19 sekcji polskiej gospodarki narodowej. Pole prostokąta ∝ zatrudnieniu.
-        Dane z <a href="https://bdl.stat.gov.pl/api/v1/" target="_blank">GUS BDL API</a>
-        + <a href="https://stat.gov.pl/obszary-tematyczne/rynek-pracy/" target="_blank">Struktura wynagrodzeń Z-12 2022</a>.
-        Zainspirowane przez <a href="https://karpathy.ai/jobs/" target="_blank">Andrej Karpathy</a>.
-      </p>
-      <div class="hdr-tags">
-        <span class="tag tag-live" id="badge-live" style="display:none"><span class="dot"></span>LIVE — BDL API</span>
-        <span class="tag tag-static" id="badge-static">GUS XLSX — statyczne</span>
-        <a href="https://bdl.stat.gov.pl/api/v1/" target="_blank" class="tag">BDL API ↗</a>
-        <a href="https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultaktualnosci/5474/36/1/1/pracujacy_w_gospodarce_narodowej_wedlug_sekcji_pkd_2007_tablice.xlsx" target="_blank" class="tag">GUS XLSX ↗</a>
-        <a href="https://karpathy.ai/jobs/" target="_blank" class="tag tag-karpathy">↗ karpathy.ai/jobs</a>
-        <span class="tag" onclick="openAbout()" style="border-color:rgba(245,166,35,.3);color:var(--accent)">? Jak to działa</span>
-      </div>
-    </div>
-    <div class="stats-block">
-      <div class="stat">
-        <div class="stat-num" id="stat-total">—</div>
-        <div class="stat-lbl">pracujących ogółem</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num" id="stat-atrisk" style="color:var(--accent)">—</div>
-        <div class="stat-lbl">w sektorach wysokiej ekspozycji AI</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num" id="stat-year">2023</div>
-        <div class="stat-lbl">rok danych</div>
-      </div>
-    </div>
-  </div>
-</header>
-
-<div id="api-bar" class="busy">
-  <div class="spin" id="api-spin"></div>
-  <span id="api-chain">Inicjalizacja…</span>
-  <span id="api-ytag" style="display:none"></span>
-</div>
-
-<div class="controls-row">
-  <span class="ctrl-lbl">Warstwa:</span>
-  <button class="btn active" data-layer="outlook">Trend zatrudnienia</button>
-  <button class="btn" data-layer="pay">Mediana wynagrodzenia</button>
-  <button class="btn btn-ai" data-layer="ai">✦ Ekspozycja na AI</button>
-  <button class="btn" data-layer="edu">Wykształcenie</button>
-</div>
-<div class="legend-row">
-  <div id="legend"></div>
-  <span class="layer-desc" id="layer-desc"></span>
-</div>
-
-<div id="chart"></div>
-
-<!-- AI IMPACT SECTION -->
-<div id="ai-impact">
-  <div class="aim-hdr">
-    <div class="aim-title">✦ Wpływ AI na polską gospodarkę <span class="aim-badge">SZACUNEK</span></div>
-    <div class="aim-sub">Obliczenia: dane GUS (zatrudnienie) × ocena ekspozycji AI wg metodologii Karpathy × konsensus McKinsey / OECD</div>
-  </div>
-  <div class="aim-cards">
-    <div class="ai-card">
-      <div class="ai-card-val" id="imp-high" style="color:var(--red)">—</div>
-      <div class="ai-card-lbl">Pracowników w sektorach <strong>wysokiej ekspozycji AI</strong> (wynik ≥ 7/10)</div>
-      <div class="ai-card-sub" id="imp-high-pct">—% siły roboczej</div>
-    </div>
-    <div class="ai-card">
-      <div class="ai-card-val" id="imp-mid" style="color:var(--accent)">—</div>
-      <div class="ai-card-lbl">Pracowników w sektorach <strong>umiarkowanej ekspozycji</strong> (wynik 4–6/10)</div>
-      <div class="ai-card-sub" id="imp-mid-pct">—% siły roboczej</div>
-    </div>
-    <div class="ai-card">
-      <div class="ai-card-val" id="imp-gdp" style="color:var(--green)">—</div>
-      <div class="ai-card-lbl">Szacowany wzrost PKB z tytułu <strong>produktywności AI</strong> (horyzont 5 lat)</div>
-      <div class="ai-card-sub">Zakres: +1–3% PKB / rok (McKinsey, OECD 2024)</div>
-    </div>
-    <div class="ai-card">
-      <div class="ai-card-val" id="imp-fte" style="color:var(--blue)">—</div>
-      <div class="ai-card-lbl">Ekwiwalent <strong>FTE uwolnionych</strong> przez automatyzację zadań cyfrowych</div>
-      <div class="ai-card-sub">Przy 15–25% wzroście produktywności w sektorach wysokiej ekspozycji</div>
-    </div>
-  </div>
-
-  <div class="dist-wrap">
-    <div class="dist-title">Rozkład pracujących wg poziomu ekspozycji na AI</div>
-    <div class="dist-bar" id="dist-bar"></div>
-    <div class="dist-key">
-      <div class="dist-key-item"><div class="dk-dot" style="background:var(--green)"></div>Niska (0–3) — praca fizyczna, minimalna automatyzacja</div>
-      <div class="dist-key-item"><div class="dk-dot" style="background:var(--accent)"></div>Umiarkowana (4–6) — mix cyfrowy i fizyczny</div>
-      <div class="dist-key-item"><div class="dk-dot" style="background:var(--red)"></div>Wysoka (7–10) — praca głównie cyfrowa, głęboka transformacja</div>
-    </div>
-  </div>
-
-  <div class="insights">
-    <div class="insight" id="insight-1"></div>
-    <div class="insight" id="insight-2"></div>
-  </div>
-</div>
-
-<div class="footer">
-  <div class="fb">
-    <strong>Zatrudnienie — skąd dane?</strong>
-    Stan 31 XII każdego roku. BDL API: K4 → G479 → subgrupa sekcji PKD → zmienne ogółem → <code>by-unit/000000000000</code>.
-    Fallback: statyczne XLSX GUS 17.03.2025 (dane za 2023). CORS proxy: <code>corsproxy.io</code>.
-  </div>
-  <div class="fb">
-    <strong>Wynagrodzenia, AI i zastrzeżenia</strong>
-    Mediany brutto Z-12 X 2022, podmioty ≥ 10 pracowników. Sekcja A — szacunek.
-    Oceny AI = szacunki LLM, nie prognozy. PKB: McKinsey / OECD 2024 — +1–3%/rok.
-    Wysoka ocena AI ≠ zanik sekcji — wzrost produktywności może zwiększać popyt.
-  </div>
-</div>
-
-</div>
-
-<div id="tt"></div>
-
-<!-- ABOUT OVERLAY -->
-<div id="overlay">
-  <div class="about-box">
-    <button class="about-close" onclick="closeAbout()">✕</button>
-    <div class="about-title">Jak to działa?</div>
-    <div class="about-sub">
-      Otwarty eksperyment zainspirowany projektem
-      <a href="https://karpathy.ai/jobs/" target="_blank">karpathy.ai/jobs</a>
-      Andreja Karpathy'ego — pokazujący, że podobne narzędzia można zbudować
-      dla dowolnego kraju używając publicznie dostępnych danych statystycznych.
-    </div>
-
-    <div class="about-sec">
-      <div class="about-sec-title">Inspiracja i kredyt</div>
-      <div class="kbox">
-        <div class="kav">🧠</div>
+  <div id="app">
+    <!-- HEADER -->
+    <header>
+      <div class="hdr">
         <div>
-          <div class="kn">Andrej Karpathy — karpathy.ai/jobs</div>
-          <div class="kt">Oryginalny projekt wizualizuje 342 zawody z Bureau of Labor Statistics (USA) jako mapę cieplną: pole = zatrudnienie, kolor = wybrany wskaźnik (wzrost, wynagrodzenie, wykształcenie, ekspozycja na AI). Ten projekt replikuje pomysł dla Polski — GUS zamiast BLS.</div>
-          <a href="https://karpathy.ai/jobs/" target="_blank" class="kl">↗ karpathy.ai/jobs</a>
-          <a href="https://github.com/karpathy/jobs" target="_blank" class="kl" style="margin-left:12px">↗ GitHub</a>
+          <h1>Polski Rynek Pracy <em>/</em> Wizualizator PKD 2007</h1>
+          <p class="tagline">
+            Interaktywna mapa cieplna 19 sekcji polskiej gospodarki narodowej. Pole prostokąta ∝ zatrudnieniu.
+            Dane z <a href="https://bdl.stat.gov.pl/api/v1/" target="_blank">GUS BDL API</a>
+            + <a href="https://stat.gov.pl/obszary-tematyczne/rynek-pracy/" target="_blank">Struktura wynagrodzeń Z-12
+              2022</a>.
+            Zainspirowane przez <a href="https://karpathy.ai/jobs/" target="_blank">Andrej Karpathy</a>.
+          </p>
+          <div class="hdr-tags">
+            <span class="tag tag-live" id="badge-live" style="display:none"><span class="dot"></span>LIVE — BDL
+              API</span>
+            <span class="tag tag-static" id="badge-static">GUS XLSX — statyczne</span>
+            <a href="https://bdl.stat.gov.pl/api/v1/" target="_blank" class="tag">BDL API ↗</a>
+            <a href="https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultaktualnosci/5474/36/1/1/pracujacy_w_gospodarce_narodowej_wedlug_sekcji_pkd_2007_tablice.xlsx"
+              target="_blank" class="tag">GUS XLSX ↗</a>
+            <a href="https://karpathy.ai/jobs/" target="_blank" class="tag tag-karpathy">↗ karpathy.ai/jobs</a>
+            <span class="tag" onclick="openAbout()" style="border-color:rgba(245,166,35,.3);color:var(--accent)">? Jak
+              to działa</span>
+          </div>
+        </div>
+        <div class="stats-block">
+          <div class="stat">
+            <div class="stat-num" id="stat-total">—</div>
+            <div class="stat-lbl">pracujących ogółem</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num" id="stat-atrisk" style="color:var(--accent)">—</div>
+            <div class="stat-lbl">w sektorach wysokiej ekspozycji AI</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num" id="stat-year">2023</div>
+            <div class="stat-lbl">rok danych</div>
+          </div>
         </div>
       </div>
+    </header>
+
+    <!-- API Status Bar -->
+    <div id="api-bar" class="busy">
+      <div class="spin" id="api-spin"></div>
+      <span id="api-chain">Inicjalizacja…</span>
+      <span id="api-ytag" style="display:none"></span>
     </div>
 
-    <div class="about-sec">
-      <div class="about-sec-title">Łańcuch danych — GUS BDL API</div>
-      <div class="step-grid">
-        <div class="step"><div class="step-n">1</div><div><div class="step-title">Znajdź subgrupę PKD w G479</div><div class="step-code">GET /api/v1/subjects?parent-id=G479&amp;lang=pl&amp;page-size=50</div><div class="step-note">G479 = „Pracujący wg PKD" w kategorii K4. Szukamy nazwy zawierającej „sekcji PKD" i „siedziby".</div></div></div>
-        <div class="step"><div class="step-n">2</div><div><div class="step-title">Pobierz listę zmiennych</div><div class="step-code">GET /api/v1/variables?subject-id={P_ID}&amp;page-size=150</div><div class="step-note">~57 zmiennych: 19 sekcji PKD × 3 płci. Filtrujemy po wymiarze „ogółem" → 19 zmiennych.</div></div></div>
-        <div class="step"><div class="step-n">3</div><div><div class="step-title">Dane dla Polski — partie po 15</div><div class="step-code">GET /api/v1/data/by-unit/000000000000?var-id=…</div><div class="step-note"><code style="font-family:var(--fm)">000000000000</code> = Polska. Partie po 15 var-id unikają limitu URL. Fallback: <a href="https://corsproxy.io" target="_blank">corsproxy.io</a>.</div></div></div>
-        <div class="step"><div class="step-n">4</div><div><div class="step-title">Dopasuj wartości do sekcji A–S</div><div class="step-note">Każda zmienna ma wymiar z literą sekcji PKD. Mapujemy na kafelek. Przy błędzie — statyczne XLSX GUS 17.03.2025.</div></div></div>
+    <!-- Controls -->
+    <div class="controls-row">
+      <span class="ctrl-lbl">Warstwa:</span>
+      <button class="btn btn-ai active" data-layer="ai">✦ Ekspozycja na AI</button>
+      <button class="btn" data-layer="outlook">Trend zatrudnienia</button>
+      <button class="btn" data-layer="pay">Mediana wynagrodzenia</button>
+      <button class="btn" data-layer="age">Wiek a ryzyko AI (GUS)</button>
+      <button class="btn" data-layer="balance">AI: Szansa vs Zagrożenie</button>
+      <button class="btn" data-layer="edu">Wykształcenie</button>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-row">
+      <div id="legend"></div>
+      <span class="layer-desc" id="layer-desc"></span>
+    </div>
+
+    <!-- Chart -->
+    <div id="chart"></div>
+
+    <!-- AI Impact Section -->
+    <div id="ai-impact">
+      <div class="aim-hdr">
+        <div class="aim-title">✦ Wpływ AI na polską gospodarkę <span class="aim-badge">SZACUNEK</span></div>
+        <div class="aim-sub">Obliczenia: dane GUS (zatrudnienie, tys. osób) × ocena ekspozycji AI wg metodologii Karpathy × konsensus
+          McKinsey / OECD. Jednostki: tys. osób oraz mln osób.</div>
+      </div>
+      <div class="aim-cards">
+        <div class="ai-card">
+          <div class="ai-card-val" id="imp-high" style="color:var(--red)">—</div>
+          <div class="ai-card-lbl">Pracowników w sektorach <strong>wysokiej ekspozycji AI</strong> (wynik ≥ 7/10)
+          </div>
+          <div class="ai-card-sub" id="imp-high-pct">—% siły roboczej</div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-card-val" id="imp-mid" style="color:var(--accent)">—</div>
+          <div class="ai-card-lbl">Pracowników w sektorach <strong>umiarkowanej ekspozycji</strong> (wynik 4–6/10)
+          </div>
+          <div class="ai-card-sub" id="imp-mid-pct">—% siły roboczej</div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-card-val" id="imp-gdp" style="color:var(--green)">—</div>
+          <div class="ai-card-lbl">Szacowany wzrost PKB z tytułu <strong>produktywności AI</strong> (horyzont 5 lat)
+          </div>
+          <div class="ai-card-sub">Scenariusz orientacyjny dla Polski. Literatura globalna (McKinsey): +0,5 do +3,4 pp produktywnosci/rok do 2040 (w tym genAI: +0,1 do +0,6 pp).</div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-card-val" id="imp-fte" style="color:var(--blue)">—</div>
+          <div class="ai-card-lbl">Ekwiwalent <strong>FTE (Full-Time Equivalent = pełny etat) uwolnionych</strong> przez automatyzację zadań cyfrowych
+          </div>
+          <div class="ai-card-sub">Przy 15–25% wzroście produktywności w sektorach wysokiej ekspozycji; wartości w tys. FTE</div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-card-val" id="imp-age-risk" style="color:#f59e0b">—</div>
+          <div class="ai-card-lbl">Grupa wieku z <strong>najwyższym ryzykiem transformacji AI</strong> (wagi wieku: oficjalne tablice GUS BAEL)
+          </div>
+          <div class="ai-card-sub" id="imp-age-risk-sub">—</div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-card-val" id="imp-balance" style="color:#22c55e">—</div>
+          <div class="ai-card-lbl"><strong>Bilans AI</strong> w pracujących: gdzie przeważa szansa, a gdzie zagrożenie
+          </div>
+          <div class="ai-card-sub" id="imp-balance-sub">—</div>
+        </div>
+      </div>
+
+      <div class="dist-wrap">
+        <div class="dist-title">Rozkład pracujących wg poziomu ekspozycji na AI</div>
+        <div class="dist-bar" id="dist-bar"></div>
+        <div class="dist-key">
+          <div class="dist-key-item"><div class="dk-dot" style="background:var(--green)"></div>Niska (0–3) — praca
+            fizyczna, minimalna automatyzacja</div>
+          <div class="dist-key-item"><div class="dk-dot" style="background:var(--accent)"></div>Umiarkowana (4–6) —
+            mix cyfrowy i fizyczny</div>
+          <div class="dist-key-item"><div class="dk-dot" style="background:var(--red)"></div>Wysoka (7–10) — praca
+            głównie cyfrowa, głęboka transformacja</div>
+        </div>
+      </div>
+
+      <div class="insights">
+        <div class="insight" id="insight-1"></div>
+        <div class="insight" id="insight-2"></div>
       </div>
     </div>
 
-    <div class="about-sec">
-      <div class="about-sec-title">Źródła danych</div>
-      <div class="src-grid">
-        <div class="src-row"><span class="sl">Zatrudnienie</span><span class="sd"><a href="https://stat.gov.pl/obszary-tematyczne/rynek-pracy/pracujacy-zatrudnieni-wynagrodzenia-koszty-pracy/pracujacy-w-gospodarce-narodowej-wedlug-sekcji-pkd-2007,36,1.html" target="_blank">GUS „Pracujący wg sekcji PKD 2007"</a> — stan 31.12, wszystkie podmioty</span><span class="sb" style="color:var(--green)">LIVE + XLSX</span></div>
-        <div class="src-row"><span class="sl">Wynagrodzenia</span><span class="sd"><a href="https://stat.gov.pl/obszary-tematyczne/rynek-pracy/pracujacy-zatrudnieni-wynagrodzenia-koszty-pracy/struktura-wynagrodzen-wedlug-zawodow-w-pazdzierniku-2022-roku,11,8.html" target="_blank">Struktura wynagrodzeń X 2022 (Z-12)</a> — ≥ 10 pracowników, mediana brutto</span><span class="sb" style="color:var(--accent)">STATYCZNE</span></div>
-        <div class="src-row"><span class="sl">Ekspozycja AI</span><span class="sd">Szacunek LLM 0–10, metodologia karpathy.ai/jobs — cyfrowy charakter pracy w sekcji PKD</span><span class="sb" style="color:var(--muted)">SZACUNEK</span></div>
-        <div class="src-row"><span class="sl">Wpływ na PKB</span><span class="sd">McKinsey Global Institute (2024), OECD Economic Outlook (2024) — +1–3% PKB/rok, horyzont 5 lat, PKB PL ~3 100 mld PLN (GUS 2023)</span><span class="sb" style="color:var(--muted)">LITERATURA</span></div>
+    <!-- Footer -->
+    <div class="footer">
+      <div class="fb">
+        <strong>Zatrudnienie — skąd dane?</strong>
+        Stan 31 XII każdego roku. BDL API: K4 → G479 → subgrupa sekcji PKD → zmienne ogółem → <code>by-unit/000000000000</code>.
+        Fallback: statyczne JSON <code>/data/sectors-2025.json</code> (dane za 2023). CORS proxy: <code>corsproxy.io</code>.
+        Dokładny endpoint: <code>https://bdl.stat.gov.pl/api/v1/data/by-unit/000000000000?format=json&amp;var-id=...</code>.
       </div>
-    </div>
-
-    <div class="about-sec">
-      <div class="about-sec-title">Ograniczenia BDL API</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="step" style="padding:8px 10px"><div><div class="step-title" style="font-size:11.5px">Limit anonimowy</div><div class="step-note">5 req/s · 100/15 min · 1 000/12 h · 10 000/7 d</div></div></div>
-        <div class="step" style="padding:8px 10px"><div><div class="step-title" style="font-size:11.5px">CORS proxy</div><div class="step-note">BDL blokuje iframe. Fallback: <a href="https://corsproxy.io" target="_blank" style="color:var(--blue)">corsproxy.io</a>. Lokalnie działa bezpośrednio.</div></div></div>
+      <div class="fb">
+        <strong>Wynagrodzenia, AI i zastrzeżenia</strong>
+        Mediany brutto Z-12 X 2022, podmioty ≥ 10 pracowników.
+        Oceny AI = szacunki LLM, nie prognozy. Szacunek PKB ma charakter scenariuszowy i zalezy od skali adopcji AI.
+        Wysoka ocena AI ≠ zanik sekcji — wzrost produktywności może zwiększać popyt.
       </div>
-    </div>
-
-    <div class="disclaimer">
-      <strong style="color:var(--muted)">Zastrzeżenie:</strong>
-      Narzędzie edukacyjne i badawcze — nie jest oficjalną publikacją GUS.
-      Szacunki mogą zawierać błędy. Dane GUS: <a href="https://creativecommons.org/licenses/by/4.0/legalcode.pl" target="_blank" style="color:var(--blue)">CC BY 4.0</a>.
-      Projekt Karpathy'ego: prawa autorskie © Andrej Karpathy.
+      <div class="fb">
+        <strong>Słownik skrótów i jednostek</strong>
+        GUS = Główny Urząd Statystyczny. BDL = Bank Danych Lokalnych.
+        PKD = Polska Klasyfikacja Działalności. AI = sztuczna inteligencja.
+        LLM = duży model językowy. PKB = produkt krajowy brutto.
+        FTE = Full-Time Equivalent (ekwiwalent pełnego etatu).
+        <strong>Jednostka zatrudnienia w danych:</strong> <code>emp</code> jest w tysiącach osób (np. 1273 = 1,273 mln osób).
+      </div>
+      <div class="fb">
+        <strong>Metodologia nowej metryki „Wiek a AI”</strong>
+        Wagi wieku pochodza z oficjalnych tablic GUS BAEL: <code>P3978 (Pracujacy wedlug wieku)</code>
+        z API BDL. Na tej bazie metryka laczy profil wieku z ekspozycja AI, trendem zatrudnienia i placami
+        w sekcji PKD. Bilans „Szansa vs Zagrozenie” pozostaje metryka analityczna (nie prognoza).
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-// ── Fallback data — GUS XLSX 17.03.2025, stan 31.12.2023, jednostka: tys. osób ─────────────
-const FALLBACK=[
-  {code:"A",name:"Rolnictwo,\nleśnictwo,\nrybactwo",  emp:1940,pay:4550, outlook:-6, edu:"Zawodowe",         ai:1,aiNote:"Rolnictwo precyzyjne z AI rośnie, lecz praca polowa i hodowla zwierząt są fizyczne. Transformacja jest kosztowna i wieloletnia."},
-  {code:"B",name:"Górnictwo\ni wydobywanie",           emp: 107,pay:10800,outlook:-15,edu:"Zawodowe / Średnie",ai:2,aiNote:"Praca pod ziemią w zmiennych warunkach. AI wspiera monitoring bezpieczeństwa, lecz wydobycie jest fizyczne — ekspozycja minimalna."},
-  {code:"C",name:"Przetwórstwo\nprzemysłowe",          emp:2570,pay:6250, outlook: 1, edu:"Zawodowe / Średnie",ai:4,aiNote:"Coboty i zautomatyzowane linie zastępują proste operacje. Złożone procesy i kontrola jakości wymagają człowieka."},
-  {code:"D",name:"Energetyka",                         emp:  74,pay:9700, outlook: 4, edu:"Wyższe / Średnie", ai:5,aiNote:"AIOps zarządza sieciami i prognozuje zużycie. Infrastruktura fizyczna wymaga jednak specjalistów w terenie."},
-  {code:"E",name:"Gospodarka\nwodna i odpadami",       emp: 101,pay:7150, outlook: 3, edu:"Zawodowe / Średnie",ai:4,aiNote:"Smart utilities z AI optymalizują sieci. Utrzymanie infrastruktury wymaga obecności fizycznej."},
-  {code:"F",name:"Budownictwo",                        emp: 805,pay:6600, outlook: 5, edu:"Zawodowe",         ai:2,aiNote:"Roboty budowlane trudne w niestandaryzowanym środowisku. AI pomaga w BIM i planowaniu, ale nie w samej budowie."},
-  {code:"G",name:"Handel hurtowy\ni detaliczny",       emp:2245,pay:5450, outlook:-1, edu:"Średnie",          ai:5,aiNote:"E-commerce i kasy samoobsługowe redukują zapotrzebowanie. Doradztwo i zarządzanie kategorią wymagają człowieka."},
-  {code:"H",name:"Transport\ni magazynowanie",         emp: 760,pay:6800, outlook: 8, edu:"Zawodowe / Średnie",ai:6,aiNote:"Autonomiczne pojazdy w fazie testów. Zautomatyzowane magazyny redukują rolę operatorów. Zmiana długoterminowa."},
-  {code:"I",name:"Gastronomia\ni zakwaterowanie",      emp: 218,pay:4350, outlook: 5, edu:"Zawodowe",         ai:2,aiNote:"Gościnność wymaga bezpośredniej interakcji. AI obsługuje rezerwacje i pricing, ale nie zastępuje personelu sali."},
-  {code:"J",name:"Informacja\ni komunikacja (IT)",     emp: 415,pay:10500,outlook:12, edu:"Wyższe",           ai:9,aiNote:"Jeden z najbardziej transformowanych sektorów. AI-asystenci kodu radykalnie zmieniają pracę programistów. Popyt może jednak rosnąć."},
-  {code:"K",name:"Finanse\ni ubezpieczenia",           emp: 379,pay:8650, outlook:-2, edu:"Wyższe",           ai:8,aiNote:"Automatyzacja procesów, scoring kredytowy AI i chatboty zastępują część ról. Doradztwo i compliance pozostają ludzkie."},
-  {code:"L",name:"Nieruchomości",                      emp: 128,pay:6250, outlook: 2, edu:"Wyższe / Średnie", ai:6,aiNote:"AI wycenia nieruchomości i analizuje rynek. Negocjacje i osobiste oglądanie wymagają człowieka."},
-  {code:"M",name:"Działalność prof.\nnaukowa i techn.",emp: 479,pay:7850, outlook: 8, edu:"Wyższe",           ai:8,aiNote:"Prawo, rachunkowość, doradztwo — AI przyspiesza analizę dokumentów. Osąd ekspercki i odpowiedzialność zawodowa są ludzkie."},
-  {code:"N",name:"Usługi admin.\ni wspierające",       emp: 367,pay:5800, outlook: 3, edu:"Średnie / Zawodowe",ai:6,aiNote:"BPO/SSC silnie dotknięte automatyzacją. Sprzątanie i ochrona mają naturalną barierę fizyczną."},
-  {code:"O",name:"Administracja\npubliczna i obrona",  emp: 873,pay:7200, outlook: 1, edu:"Wyższe / Średnie", ai:4,aiNote:"Procedury i odpowiedzialność publiczna spowalniają automatyzację. AI wspiera dokumentację i wyszukiwanie przepisów."},
-  {code:"P",name:"Edukacja",                           emp:1015,pay:5850, outlook:-3, edu:"Wyższe",           ai:6,aiNote:"AI generuje materiały i personalizuje naukę. Rola wychowawcza, mentoring i ewaluacja są trudne do zastąpienia."},
-  {code:"Q",name:"Opieka zdrowotna\ni pomoc społeczna",emp: 773,pay:6500, outlook:10, edu:"Wyższe / Zawodowe",ai:4,aiNote:"AI wspiera diagnostykę obrazową. Bezpośredni kontakt z pacjentem i opieka są fundamentalnie ludzkie. Sektor rośnie z demografią."},
-  {code:"R",name:"Kultura,\nrozrywka i rekreacja",     emp: 148,pay:5500, outlook: 4, edu:"Wyższe / Średnie", ai:5,aiNote:"Treści cyfrowe coraz silniej wspierane przez AI. Kultura performatywna (koncerty, sport) pozostaje ludzka."},
-  {code:"S",name:"Pozostałe\nusługi",                  emp: 148,pay:5200, outlook: 2, edu:"Zawodowe / Średnie",ai:4,aiNote:"Heterogeniczna sekcja. Praca fizyczna dominuje; AI wpływa głównie na CRM i rezerwacje."},
-];
+  <!-- Tooltip -->
+  <div id="tt"></div>
 
-// ── Scales ────────────────────────────────────────────────────────────────────
-const outlookColor=v=>{
-  if(v<=-10)return"#7f1d1d";if(v<=-4)return"#dc2626";
-  if(v<0)return"#f97316";if(v===0)return"#6b7280";
-  if(v<=4)return"#4ade80";if(v<=9)return"#16a34a";return"#15803d";
-};
-const payScale=d3.scaleSequential(t=>d3.interpolate("#1e3a5f","#38bdf8")(t)).domain([4000,11000]);
-const aiScale =d3.scaleSequential(t=>d3.interpolateRdYlGn(1-t)).domain([0,10]);
-const aiBarCol=v=>v>=7?"#f87171":v>=4?"#f5a623":"#4ade80";
-const eduMap={"Zawodowe":"#f97316","Zawodowe / Średnie":"#fb923c","Zawodowe / Podstawowe":"#fbbf24","Średnie":"#60a5fa","Średnie / Zawodowe":"#7dd3fc","Wyższe / Zawodowe":"#a78bfa","Wyższe / Średnie":"#818cf8","Wyższe":"#4338ca"};
-
-const LAYERS={
-  outlook:{label:"Zmiana zatrudnienia 2019–2023 (%)",desc:"Czerwony = kurczące się · Zielony = rosnące",colorFn:d=>outlookColor(d.data.outlook),legendItems:[{c:"#7f1d1d",l:"< −10%"},{c:"#dc2626",l:"−4 do −10%"},{c:"#f97316",l:"−1 do −4%"},{c:"#6b7280",l:"Stabilny"},{c:"#4ade80",l:"+1 do +4%"},{c:"#16a34a",l:"+5 do +9%"},{c:"#15803d",l:"≥ +10%"}],type:"items"},
-  pay:{label:"Mediana wynagrodzenia brutto (PLN / m-c) · Z-12 X 2022",desc:"Ciemny = niższe · Jasnoniebieski = wyższe płace",colorFn:d=>payScale(d.data.pay),type:"gradient",min:4000,max:11000,unitL:"4 000 PLN",unitR:"11 000+ PLN"},
-  ai:{label:"Ekspozycja na AI · szacunek 0–10",desc:"Czerwony = praca cyfrowa, głęboka transformacja · Zielony = praca fizyczna",colorFn:d=>aiScale(d.data.ai),type:"gradient",min:0,max:10,unitL:"0 — minimalna",unitR:"10 — maksymalna"},
-  edu:{label:"Typowe wykształcenie",desc:"Pomarańczowy = zawodowe · Niebieski = średnie · Fioletowy = wyższe",colorFn:d=>eduMap[d.data.edu]||"#6b7280",legendItems:[{c:"#f97316",l:"Zawodowe"},{c:"#60a5fa",l:"Średnie"},{c:"#818cf8",l:"Wyższe / Średnie"},{c:"#4338ca",l:"Wyższe"}],type:"items"},
-};
-
-let sectors=FALLBACK.map(s=>({...s}));
-let currentLayer="outlook";
-
-// ── AI Economic Impact ────────────────────────────────────────────────────────
-function calcImpact(){
-  const total=sectors.reduce((s,d)=>s+d.emp,0);
-  const high =sectors.filter(s=>s.ai>=7).reduce((s,d)=>s+d.emp,0);
-  const mid  =sectors.filter(s=>s.ai>=4&&s.ai<7).reduce((s,d)=>s+d.emp,0);
-  const low  =sectors.filter(s=>s.ai<4).reduce((s,d)=>s+d.emp,0);
-  const gdpBln=3100;
-  const fmt=n=>n>=1000?(n/1000).toFixed(2).replace(".",",")+" M":Math.round(n)+" tys.";
-  const pct=n=>(n/total*100).toFixed(1)+"%";
-  document.getElementById("imp-high").textContent=fmt(high);
-  document.getElementById("imp-high-pct").textContent=pct(high)+" siły roboczej";
-  document.getElementById("imp-mid").textContent=fmt(mid);
-  document.getElementById("imp-mid-pct").textContent=pct(mid)+" siły roboczej";
-  document.getElementById("imp-gdp").textContent=`+${Math.round(gdpBln*.01)}–${Math.round(gdpBln*.03)} mld PLN`;
-  const fLow=Math.round(high*.15/1000),fHi=Math.round(high*.25/1000);
-  document.getElementById("imp-fte").textContent=`${fLow}–${fHi} tys. FTE`;
-  document.getElementById("stat-atrisk").textContent=fmt(high);
-
-  // Bar
-  const bar=document.getElementById("dist-bar");
-  bar.innerHTML="";
-  [{val:low,p:low/total*100,c:"#4ade80",l:"Niska"},{val:mid,p:mid/total*100,c:"#f5a623",l:"Umiarkowana"},{val:high,p:high/total*100,c:"#f87171",l:"Wysoka"}]
-    .forEach(seg=>{
-      const d=document.createElement("div");
-      d.className="dist-seg";
-      d.style.cssText=`flex:${seg.p};background:${seg.c}`;
-      d.title=`${seg.l}: ${fmt(seg.val)} (${pct(seg.val)})`;
-      d.innerHTML=`<span>${seg.p>8?Math.round(seg.p)+"%":""}</span>`;
-      bar.appendChild(d);
-    });
-
-  const topAI=[...sectors].filter(s=>s.ai>=7).sort((a,b)=>b.emp-a.emp)[0];
-  const topGrowthHighAI=[...sectors].filter(s=>s.ai>=6).sort((a,b)=>b.outlook-a.outlook)[0];
-
-  document.getElementById("insight-1").innerHTML=`
-    <strong>Największy sektor wysokiej ekspozycji:</strong>
-    Sekcja <span class="hi">${topAI?.code}</span>
-    (${topAI?.name.replace(/\n/g," ")}) — <span class="hi">${fmt(topAI?.emp||0)}</span> pracowników
-    przy ocenie AI <span class="hi">${topAI?.ai}/10</span>.
-    Praca niemal w całości cyfrowa — największe pole do transformacji przez generatywne AI.
-    <br><br>
-    <strong>Metodologia:</strong> Ocena AI wg Karpathy — LLM szacuje, jak bardzo praca jest fundamentalnie cyfrowa.
-    Score ≥ 7 oznacza wykonywanie pracy w całości lub w dominującej części na komputerze.
-  `;
-  document.getElementById("insight-2").innerHTML=`
-    <strong>Paradoks: wzrost + wysoka ekspozycja AI:</strong>
-    Sekcja <span class="hi">${topGrowthHighAI?.code}</span>
-    (${topGrowthHighAI?.name.replace(/\n/g," ")}) —
-    trend <span class="hi">+${topGrowthHighAI?.outlook}%</span> przy AI ${topGrowthHighAI?.ai}/10.
-    Wysoka ekspozycja na AI nie musi oznaczać spadku zatrudnienia —
-    wzrost produktywności może generować <em>więcej</em> popytu na daną pracę.
-    <br><br>
-    <strong>Szacunek PKB</strong> oparty na McKinsey GI / OECD (2024):
-    +1–3% PKB rocznie z produktywności AI w horyzoncie 5 lat.
-    Przy PKB Polski ~3 100 mld PLN (GUS 2023): to <span class="hi">+31–93 mld PLN</span> rocznie.
-  `;
-}
-
-// ── BDL API ───────────────────────────────────────────────────────────────────
-const BDL="https://bdl.stat.gov.pl/api/v1",POLAND="000000000000",TIMEOUT=9000;
-
-async function ft(url,ms=TIMEOUT){
-  try{
-    const t1=new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms));
-    const res=await Promise.race([fetch(url),t1]);
-    if(res.ok)return res;throw new Error("HTTP "+res.status);
-  }catch(_){}
-  const proxy="https://corsproxy.io/?"+encodeURIComponent(url);
-  const t2=new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms));
-  return Promise.race([fetch(proxy),t2]);
-}
-
-function setBar(type,msg,year){
-  const bar=document.getElementById("api-bar");
-  bar.className=type;
-  document.getElementById("api-chain").textContent=msg;
-  document.getElementById("api-spin").style.display=type==="busy"?"block":"none";
-  const yt=document.getElementById("api-ytag");
-  year?(yt.textContent=year,yt.style.display="inline"):(yt.style.display="none");
-  if(type==="ok")setTimeout(()=>bar.classList.add("collapsed"),3500);
-}
-function setLive(v){
-  document.getElementById("badge-live").style.display=v?"inline-flex":"none";
-  document.getElementById("badge-static").style.display=v?"none":"inline-flex";
-}
-function updateStats(total,yr){
-  const fmt=t=>t>=1000?(t/1000).toFixed(2).replace(".",",")+" M":Math.round(t)+" tys.";
-  document.getElementById("stat-total").textContent=fmt(total);
-  document.getElementById("stat-year").textContent=yr||"—";
-}
-
-async function fetchBDL(){
-  setBar("busy","[1/3] Szukam subgrup sekcji PKD w G479…");
-  try{
-    const s1=await ft(`${BDL}/subjects?parent-id=G479&format=json&lang=pl&page-size=50`);
-    if(!s1.ok)throw new Error(`subjects ${s1.status}`);
-    const j1=await s1.json(),subs=j1.results||[];
-    let sub=subs.find(s=>s.name&&s.name.toLowerCase().includes("sekcji pkd")&&s.name.toLowerCase().includes("siedziby"));
-    if(!sub)sub=subs.find(s=>s.name&&s.name.toLowerCase().includes("sekcji pkd"));
-    if(!sub)throw new Error("Nie znaleziono subgrupy PKD w G479");
-    setBar("busy",`[2/3] Zmienne: „${sub.name.slice(0,50)}…"`);
-    const s2=await ft(`${BDL}/variables?subject-id=${sub.id}&format=json&lang=pl&page-size=150`);
-    if(!s2.ok)throw new Error(`variables ${s2.status}`);
-    const j2=await s2.json();let vars=j2.results||[];
-    let totalVars=vars.filter(v=>{
-      if(!v.dimensions)return false;
-      const dims=v.dimensions.map(d=>(d.name||"").toLowerCase());
-      return dims.some(d=>d==="ogółem"||d==="total"||d==="razem"||d==="ogolem");
-    });
-    if(!totalVars.length)totalVars=vars;
-    if(!totalVars.length)throw new Error("Brak zmiennych w subgrupie");
-    const varIds=totalVars.map(v=>v.id),BATCH=15,batches=[];
-    for(let i=0;i<varIds.length;i+=BATCH)batches.push(varIds.slice(i,i+BATCH));
-    setBar("busy",`[3/3] Pobieram dane PL (${batches.length} partii, ${varIds.length} zmiennych)…`);
-    const allData=[];
-    for(const batch of batches){
-      const params=batch.map(id=>`var-id=${id}`).join("&");
-      const s3=await ft(`${BDL}/data/by-unit/${POLAND}?format=json&${params}&page-size=100`);
-      if(!s3.ok)throw new Error(`by-unit ${s3.status}`);
-      const j3=await s3.json();allData.push(...(j3.results||[]));
-    }
-    const updates={};let latestYear=0;
-    allData.forEach(uv=>{
-      const vm=totalVars.find(v=>v.id===uv.id)||vars.find(v=>v.id===uv.id);
-      if(!vm||!vm.dimensions)return;
-      const sd=vm.dimensions.find(d=>{
-        const n=(d.name||"").toUpperCase();
-        return /\bSEKCJ[A-Z]\s+[A-S]\b/.test(n)||/^SEKCJA\s+[A-S]/.test(n)||
-               /^[A-S]\s*[-–—]/.test(n.trim())||/\b[A-S]\s*[-–—]\s*[A-ZŁÓŚŹĆĘĄ]/.test(n);
-      });
-      let code=null;
-      if(sd){const m=(sd.name||"").toUpperCase().match(/\b([A-S])\b/);if(m)code=m[1];}
-      if(!code&&uv.name){const nm=uv.name.toUpperCase();const m=nm.match(/SEKCJ[A-Z]\s+([A-S])\b/)||nm.match(/\b([A-S])\s*[-–]/);if(m)code=m[1];}
-      if(!code)return;
-      const vals=uv.values||[];if(!vals.length)return;
-      const latest=vals.reduce((a,b)=>a.year>b.year?a:b);
-      if(latest.val==null)return;
-      updates[code]=latest.val;if(latest.year>latestYear)latestYear=latest.year;
-    });
-    const matched=Object.keys(updates).length;
-    if(!matched)throw new Error("Nie dopasowano danych do sekcji PKD");
-    sectors=sectors.map(s=>({...s,emp:updates[s.code]||s.emp,dataSource:"BDL API live"}));
-    const total=sectors.reduce((s,d)=>s+d.emp,0);
-    updateStats(total,`${latestYear} (live)`);
-    setBar("ok",`✓ BDL API: ${matched}/19 sekcji. Dane za ${latestYear}.`,latestYear);
-    setLive(true);calcImpact();render();
-  }catch(err){
-    console.warn("BDL API:",err.message);
-    const total=sectors.reduce((s,d)=>s+d.emp,0);
-    updateStats(total,"2023 (statyczne)");
-    setBar("warn",`BDL API: ${err.message} — dane statyczne GUS 17.03.2025`);
-    setLive(false);
-  }
-}
-
-// ── Treemap ───────────────────────────────────────────────────────────────────
-function render(){
-  const container=document.getElementById("chart");
-  container.querySelectorAll("svg").forEach(e=>e.remove());
-  const W=container.clientWidth||1200;
-  const H=Math.max(Math.min(W*0.65,800),400);
-
-  const root=d3.hierarchy({name:"PL",children:sectors})
-    .sum(d=>Math.max(d.emp||0,0)).sort((a,b)=>b.value-a.value);
-  d3.treemap().size([W,H]).paddingOuter(4).paddingInner(2).round(true)(root);
-
-  const svg=d3.select(container).append("svg")
-    .attr("width",W).attr("height",H)
-    .attr("role","img")
-    .attr("aria-label","Mapa cieplna zatrudnienia w Polsce wg sekcji PKD 2007");
-
-  const layer=LAYERS[currentLayer];
-  document.getElementById("layer-desc").textContent=layer.desc||"";
-
-  const tiles=svg.selectAll(".tile").data(root.leaves()).enter()
-    .append("g").attr("class","tile")
-    .attr("tabindex","0")
-    .attr("role","button")
-    .attr("aria-label",d=>`Sekcja ${d.data.code}: ${d.data.name.replace(/\n/g," ")}, ${Math.round(d.data.emp)} tys. pracowników`)
-    .attr("transform",d=>`translate(${d.x0},${d.y0})`);
-
-  tiles.append("rect")
-    .attr("width",d=>Math.max(0,d.x1-d.x0))
-    .attr("height",d=>Math.max(0,d.y1-d.y0))
-    .attr("fill",d=>layer.colorFn(d))
-    .attr("rx",3);
-
-  tiles.each(function(d){
-    const w=d.x1-d.x0,h=d.y1-d.y0;
-    if(w<22||h<16)return;
-    const g=d3.select(this),dat=d.data;
-    const cid="cl"+dat.code;
-    g.append("clipPath").attr("id",cid).append("rect")
-      .attr("width",w-2).attr("height",h-2).attr("x",1).attr("y",1);
-    const c=g.append("g").attr("clip-path",`url(#${cid})`);
-
-    // AI score mini-bar bottom (visible on every layer as context)
-    if(w>50&&h>38){
-      const bw=Math.min(44,w-12),bh=4,bx=w-bw-5,by=h-bh-5;
-      c.append("rect").attr("x",bx).attr("y",by).attr("width",bw).attr("height",bh).attr("fill","rgba(0,0,0,.4)").attr("rx",2);
-      c.append("rect").attr("x",bx).attr("y",by).attr("width",bw*(dat.ai/10)).attr("height",bh).attr("fill",aiBarCol(dat.ai)).attr("rx",2);
-    }
-
-    // PKD code top-left
-    const cfs=Math.min(14,Math.max(8,w/9));
-    c.append("text").attr("x",6).attr("y",cfs+4)
-      .attr("font-size",cfs+"px").attr("font-weight","800")
-      .attr("font-family","JetBrains Mono,monospace")
-      .attr("fill","rgba(255,255,255,.92)")
-      .style("text-shadow","0 1px 4px rgba(0,0,0,.8)")
-      .text(dat.code);
-
-    if(w<38||h<30)return;
-    const lines=dat.name.split("\n").filter(Boolean);
-    const nfs=Math.min(11.5,Math.max(7,w/14));
-    const lh=nfs+2.5;
-    const sy=Math.max(cfs+13,(h-lines.length*lh)/2+nfs);
-    lines.forEach((ln,i)=>{
-      if(sy+i*lh>h-16)return;
-      c.append("text").attr("x",w/2).attr("y",sy+i*lh)
-        .attr("text-anchor","middle")
-        .attr("font-size",nfs+"px").attr("font-weight","700")
-        .attr("fill","rgba(255,255,255,.9)")
-        .style("text-shadow","0 1px 5px rgba(0,0,0,.7)")
-        .text(ln);
-    });
-    if(h>70&&w>68){
-      const e=dat.emp,es=e>=1000?(e/1000).toFixed(1).replace(".",",")+"\u202fM":Math.round(e)+" tys.";
-      c.append("text").attr("x",w/2).attr("y",sy+lines.length*lh+5)
-        .attr("text-anchor","middle")
-        .attr("font-size",Math.max(7,nfs-2)+"px")
-        .attr("font-family","JetBrains Mono,monospace")
-        .attr("fill","rgba(255,255,255,.42)")
-        .text(es);
-    }
-  });
-
-  // Tooltip
-  const tt=document.getElementById("tt");
-  function showTT(ex,ey,d){
-    const dat=d.data;
-    const tr=dat.outlook>0?"+"+dat.outlook+"%":dat.outlook+"%";
-    const trc=dat.outlook>4?"#4ade80":dat.outlook>0?"#86efac":dat.outlook<-4?"#f87171":"#9ca3af";
-    const e=dat.emp,es=e>=1000?(e/1000).toFixed(2).replace(".",",")+" mln":Math.round(e)+" tys.";
-    tt.style.display="block";
-    tt.innerHTML=`
-      <div class="tt-code">PKD · Sekcja ${dat.code}</div>
-      <div class="tt-name">${dat.name.replace(/\n/g," ")}</div>
-      <div class="tt-grid">
-        <span class="tt-k">Zatrudnienie</span><span class="tt-v">${es} os.</span>
-        <span class="tt-k">Mediana wynagrodzenia</span><span class="tt-v">${dat.pay.toLocaleString("pl-PL")} PLN</span>
-        <span class="tt-k">Zmiana 2019–2023</span><span class="tt-v" style="color:${trc}">${tr}</span>
-        <span class="tt-k">Wykształcenie</span><span class="tt-v">${dat.edu}</span>
+  <!-- About Overlay -->
+  <div id="overlay">
+    <div class="about-box">
+      <button class="about-close" onclick="closeAbout()">✕</button>
+      <div class="about-title">Jak to działa?</div>
+      <div class="about-sub">
+        Otwarty eksperyment zainspirowany projektem
+        <a href="https://karpathy.ai/jobs/" target="_blank">karpathy.ai/jobs</a>
+        Andreja Karpathy'ego — pokazujący, że podobne narzędzia można zbudować
+        dla dowolnego kraju używając publicznie dostępnych danych statystycznych.
       </div>
-      <div class="tt-aibar">
-        <div class="tt-aibar-lbl">
-          <span>Ekspozycja na AI</span>
-          <span style="color:${aiBarCol(dat.ai)};font-family:var(--fm)">${dat.ai}/10</span>
+
+      <div class="about-sec">
+        <div class="about-sec-title">Inspiracja i kredyt</div>
+        <div class="kbox">
+          <div class="kav">🧠</div>
+          <div>
+            <div class="kn">Andrej Karpathy — karpathy.ai/jobs</div>
+            <div class="kt">Oryginalny projekt wizualizuje 342 zawody z Bureau of Labor Statistics (USA) jako mapę
+              cieplną: pole = zatrudnienie, kolor = wybrany wskaźnik (wzrost, wynagrodzenie, wykształcenie, ekspozycja
+              na AI). Ten projekt replikuje pomysł dla Polski — GUS zamiast BLS.</div>
+            <a href="https://karpathy.ai/jobs/" target="_blank" class="kl">↗ karpathy.ai/jobs</a>
+            <a href="https://github.com/karpathy/jobs" target="_blank" class="kl"
+              style="margin-left:12px">↗ GitHub</a>
+          </div>
         </div>
-        <div class="tt-track"><div class="tt-fill" style="width:${dat.ai*10}%;background:${aiBarCol(dat.ai)}"></div></div>
-        <div class="tt-ainote">${dat.aiNote}</div>
       </div>
-      <div class="tt-src">${dat.dataSource||"GUS XLSX 17.03.2025"} · Wynagrodzenie: Z-12 X 2022</div>
-    `;
-    tt.style.left=Math.min(ex+16,window.innerWidth-316)+"px";
-    tt.style.top=Math.min(ey-12,window.innerHeight-330)+"px";
-  }
-  tiles
-    .on("mousemove",(e,d)=>showTT(e.clientX,e.clientY,d))
-    .on("mouseleave",()=>{tt.style.display="none";})
-    .on("touchstart",(e,d)=>{e.preventDefault();const t=e.touches[0];showTT(t.clientX,t.clientY,d);},{passive:false})
-    .on("touchend",()=>setTimeout(()=>{tt.style.display="none";},2500))
-    .on("focus",(e,d)=>{const b=e.currentTarget.getBoundingClientRect();showTT(b.left+b.width/2,b.top,d);})
-    .on("blur",()=>{tt.style.display="none";});
 
-  renderLegend(layer);
-}
+      <div class="about-sec">
+        <div class="about-sec-title">Łańcuch danych — GUS BDL API</div>
+        <div class="step-grid">
+          <div class="step"><div class="step-n">1</div>
+            <div><div class="step-title">Znajdź subgrupę PKD w G479</div><div class="step-code">GET
+                /api/v1/subjects?parent-id=G479&amp;lang=pl&amp;page-size=50</div><div class="step-note">G479 = „Pracujący
+                wg PKD" w kategorii K4. Szukamy nazwy zawierającej „sekcji PKD" i „siedziby".</div></div>
+          </div>
+          <div class="step"><div class="step-n">2</div>
+            <div><div class="step-title">Pobierz listę zmiennych</div><div class="step-code">GET
+                /api/v1/variables?subject-id={P_ID}&amp;page-size=150</div><div class="step-note">~57 zmiennych: 19
+                sekcji PKD × 3 płci. Filtrujemy po wymiarze „ogółem" → 19 zmiennych.</div></div>
+          </div>
+          <div class="step"><div class="step-n">3</div>
+            <div><div class="step-title">Dane dla Polski — partie po 15</div><div class="step-code">GET
+                /api/v1/data/by-unit/000000000000?var-id=…</div><div class="step-note"><code
+                  style="font-family:var(--fm)">000000000000</code> = Polska. Partie po 15 var-id unikają limitu URL.
+              Fallback: <a href="https://corsproxy.io" target="_blank">corsproxy.io</a>.</div></div>
+          </div>
+          <div class="step"><div class="step-n">4</div>
+            <div><div class="step-title">Dopasuj wartości do sekcji A–S</div><div class="step-note">Każda zmienna ma
+                wymiar z literą sekcji PKD. Mapujemy na kafelek. Przy błędzie — statyczne JSON fallback.</div></div>
+          </div>
+        </div>
+      </div>
 
-function renderLegend(layer){
-  const el=document.getElementById("legend");
-  el.innerHTML="";
-  if(layer.type==="items"){
-    (layer.legendItems||[]).forEach(item=>{
-      const d=document.createElement("div");
-      d.className="legend-item";
-      d.innerHTML=`<div class="lsw" style="background:${item.c}"></div><span>${item.l}</span>`;
-      el.appendChild(d);
-    });
-  } else {
-    const n=26;
-    const colors=Array.from({length:n+1},(_,i)=>{
-      const t=i/n,v=layer.min+t*(layer.max-layer.min);
-      return layer.colorFn({data:{pay:v,ai:v,outlook:v,edu:""}});
-    });
-    const b=document.createElement("div");
-    b.style.cssText="display:flex;align-items:center;gap:10px;font-size:11px;color:#555;font-family:JetBrains Mono,monospace";
-    b.innerHTML=`<span>${layer.unitL}</span><div style="width:180px;height:10px;border-radius:3px;background:linear-gradient(to right,${colors.join(",")});border:1px solid #252525"></div><span>${layer.unitR}</span>`;
-    el.appendChild(b);
-  }
-}
+      <div class="about-sec">
+        <div class="about-sec-title">Źródła danych</div>
+        <div class="src-grid">
+          <div class="src-row"><span class="sl">Zatrudnienie</span><span class="sd"><a
+                href="https://stat.gov.pl/obszary-tematyczne/rynek-pracy/pracujacy-zatrudnieni-wynagrodzenia-koszty-pracy/pracujacy-w-gospodarce-narodowej-wedlug-sekcji-pkd-2007,36,1.html"
+                target="_blank">GUS „Pracujący wg sekcji PKD 2007"</a> — stan 31.12, wszystkie podmioty</span><span
+              class="sb" style="color:var(--green)">LIVE + JSON</span></div>
+          <div class="src-row"><span class="sl">Wynagrodzenia</span><span class="sd"><a
+                href="https://stat.gov.pl/obszary-tematyczne/rynek-pracy/pracujacy-zatrudnieni-wynagrodzenia-koszty-pracy/struktura-wynagrodzen-wedlug-zawodow-w-pazdzierniku-2022-roku,11,8.html"
+                target="_blank">Struktura wynagrodzeń X 2022 (Z-12)</a> — ≥ 10 pracowników, mediana brutto</span><span
+              class="sb" style="color:var(--accent)">STATYCZNE</span></div>
+          <div class="src-row"><span class="sl">Ekspozycja AI</span><span class="sd">Szacunek LLM 0–10, metodologia
+              karpathy.ai/jobs — cyfrowy charakter pracy w sekcji PKD</span><span class="sb"
+              style="color:var(--muted)">SZACUNEK</span></div>
+          <div class="src-row"><span class="sl">Wpływ na PKB</span><span class="sd">McKinsey Global Institute (2024),
+              OECD Economic Outlook (2024) — +1–3% PKB/rok, horyzont 5 lat, PKB PL ~3 100 mld PLN (GUS 2023)</span><span
+              class="sb" style="color:var(--muted)">LITERATURA</span></div>
+        </div>
+      </div>
 
-// ── Controls ──────────────────────────────────────────────────────────────────
-document.querySelectorAll(".btn[data-layer]").forEach(btn=>{
-  btn.addEventListener("click",function(){
-    document.querySelectorAll(".btn[data-layer]").forEach(b=>b.classList.remove("active"));
-    this.classList.add("active");
-    currentLayer=this.dataset.layer;
-    render();
-  });
-});
+      <div class="about-sec">
+        <div class="about-sec-title">Dokładne endpointy API (1:1 z kodem)</div>
+        <div class="step-grid">
+          <div class="step"><div class="step-n">1</div>
+            <div><div class="step-title">Subjekty pod G479</div><div class="step-code">GET https://bdl.stat.gov.pl/api/v1/subjects?parent-id=G479&amp;format=json&amp;lang=pl&amp;page-size=50</div></div>
+          </div>
+          <div class="step"><div class="step-n">2</div>
+            <div><div class="step-title">Zmienne dla subgrupy</div><div class="step-code">GET https://bdl.stat.gov.pl/api/v1/variables?subject-id={subjectId}&amp;format=json&amp;lang=pl&amp;page-size=150</div></div>
+          </div>
+          <div class="step"><div class="step-n">3</div>
+            <div><div class="step-title">Dane dla Polski (batch var-id)</div><div class="step-code">GET https://bdl.stat.gov.pl/api/v1/data/by-unit/000000000000?format=json&amp;var-id={id1}&amp;var-id={id2}&amp;page-size=100</div></div>
+          </div>
+          <div class="step"><div class="step-n">4</div>
+            <div><div class="step-title">Oficjalna tablica wieku BAEL (GUS)</div><div class="step-code">GET https://bdl.stat.gov.pl/api/v1/variables?subject-id=P3978&amp;format=json&amp;lang=en</div><div class="step-code">GET https://bdl.stat.gov.pl/api/v1/data/by-unit/000000000000?format=json&amp;var-id=1614883&amp;var-id=1614885&amp;var-id=1614887&amp;var-id=1614889&amp;page-size=100</div></div>
+          </div>
+          <div class="step"><div class="step-n">5</div>
+            <div><div class="step-title">Lokalny fallback</div><div class="step-code">./data/sectors-2025.json oraz ./data/sectors-2025-embedded.js</div></div>
+          </div>
+        </div>
+      </div>
 
-// ── Overlay ───────────────────────────────────────────────────────────────────
-function openAbout(){document.getElementById("overlay").classList.add("show");}
-function closeAbout(){document.getElementById("overlay").classList.remove("show");}
-document.getElementById("overlay").addEventListener("click",e=>{if(e.target===e.currentTarget)closeAbout();});
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAbout();});
+      <div class="about-sec">
+        <div class="about-sec-title">Ograniczenia BDL API</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="step" style="padding:8px 10px"><div><div class="step-title" style="font-size:11.5px">Limit
+                anonimowy</div><div class="step-note">5 req/s · 100/15 min · 1 000/12 h · 10 000/7 d</div></div></div>
+          <div class="step" style="padding:8px 10px"><div><div class="step-title" style="font-size:11.5px">CORS
+                proxy</div><div class="step-note">BDL blokuje iframe. Fallback: <a href="https://corsproxy.io"
+                target="_blank" style="color:var(--blue)">corsproxy.io</a>. Lokalnie działa bezpośrednio.</div></div></div>
+        </div>
+      </div>
 
-// ── Resize ────────────────────────────────────────────────────────────────────
-let rt;
-window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(render,130);});
+      <div class="disclaimer">
+        <strong style="color:var(--muted)">Zastrzeżenie:</strong>
+        Narzędzie edukacyjne i badawcze — nie jest oficjalną publikacją GUS.
+        Szacunki mogą zawierać błędy. Dane GUS: <a href="https://creativecommons.org/licenses/by/4.0/legalcode.pl"
+          target="_blank" style="color:var(--blue)">CC BY 4.0</a>.
+        Projekt Karpathy'ego: prawa autorskie © Andrej Karpathy.
+      </div>
+    </div>
+  </div>
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-const st=sectors.reduce((s,d)=>s+d.emp,0);
-updateStats(st,"2023 (ładowanie…)");
-calcImpact();
-render();
-fetchBDL();
-</script>
+  <!-- Scripts -->
+  <script src="./src/config.js"></script>
+  <script src="./src/utils.js"></script>
+  <script src="./src/api.js"></script>
+  <script src="./src/render.js"></script>
+  <script src="./src/ui.js"></script>
+  <script src="./src/app.js"></script>
 </body>
+
 </html>
